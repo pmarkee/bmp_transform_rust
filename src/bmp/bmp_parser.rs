@@ -7,22 +7,24 @@ use byteorder::ByteOrder;
 use byteorder::LittleEndian;
 use std::iter::Iterator;
 
-pub fn parse_bitmap_file_header(buffer: &[u8; 14]) -> BitmapFileHeader {
+pub fn parse_bitmap_file_header(buffer: [u8; 14]) -> BitmapFileHeader {
     BitmapFileHeader {
-        signature: LittleEndian::read_u16(buffer),
+        signature: LittleEndian::read_u16(&buffer),
         other_bytes: LittleEndian::read_u64(&buffer[2..10]),
         offset: LittleEndian::read_u32(&buffer[10..14]),
     }
 }
 
-pub fn parse_dib_header(buffer: &[u8; 8]) -> BitmapDibHeader {
+pub fn parse_dib_header(buffer: Vec<u8>) -> BitmapDibHeader {
     BitmapDibHeader {
-        width: LittleEndian::read_u32(buffer),
-        height: LittleEndian::read_u32(&buffer[4..]),
+        raw_data: buffer.clone(),
+        header_size: LittleEndian::read_u32(&buffer),
+        width: LittleEndian::read_u32(&buffer[4..]),
+        height: LittleEndian::read_u32(&buffer[8..]),
     }
 }
 
-pub fn parse_bitmap(buffer: &Vec<u8>, dib_header: &BitmapDibHeader) -> Bitmap {
+pub fn parse_bitmap(buffer: Vec<u8>, dib_header: &BitmapDibHeader) -> Bitmap {
     let padding_size = dib_header.width * 3 % 4;
     let mut buffer_iterator = buffer.iter();
 

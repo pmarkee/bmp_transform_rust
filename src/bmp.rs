@@ -1,8 +1,10 @@
 use std::fs::File;
-use std::io::Error;
+use std::fs::OpenOptions;
+use std::io::Result;
 
 mod bmp_parser;
 mod file_reader;
+mod file_writer;
 
 // TODO rethink what should be public and private here
 pub struct Pixel {
@@ -19,6 +21,8 @@ pub struct BitmapFileHeader {
 
 #[derive(Debug)]
 pub struct BitmapDibHeader {
+    pub raw_data: Vec<u8>,
+    pub header_size: u32,
     pub width: u32,
     pub height: u32,
 }
@@ -54,15 +58,15 @@ impl std::fmt::Debug for BmpFile {
     }
 }
 
-pub fn read_bmp_file(path: &str) -> Result<BmpFile, Error> {
+pub fn read_bmp_file(path: &str) -> Result<BmpFile> {
     let mut file = File::open(&path).unwrap();
 
     let bitmap_file_header =
-        bmp_parser::parse_bitmap_file_header(&file_reader::read_header_data(&mut file)?);
+        bmp_parser::parse_bitmap_file_header(file_reader::read_header_data(&mut file)?);
     let bitmap_dib_header =
-        bmp_parser::parse_dib_header(&file_reader::read_dib_header_data(&mut file)?);
+        bmp_parser::parse_dib_header(file_reader::read_dib_header_data(&mut file)?);
     let bitmap = bmp_parser::parse_bitmap(
-        &file_reader::read_bitmap_data(&mut file, bitmap_file_header.offset.clone())?,
+        file_reader::read_bitmap_data(&mut file, bitmap_file_header.offset.clone())?,
         &bitmap_dib_header,
     );
 
@@ -71,4 +75,13 @@ pub fn read_bmp_file(path: &str) -> Result<BmpFile, Error> {
         bitmap_dib_header,
         bitmap,
     })
+}
+
+pub fn write_bmp_file(path: &str, bmp_file: &BmpFile) -> Result<()> {
+    let mut file = OpenOptions::new()
+        .read(false)
+        .write(true)
+        .create(true)
+        .open(path)?;
+    file_writer::write_to_file(&mut file, bmp_file)
 }
