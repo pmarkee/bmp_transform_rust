@@ -2,24 +2,25 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Result;
 
-mod bmp_parser;
 mod file_reader;
 mod file_writer;
+mod parser;
+mod transformer;
 
-// TODO rethink what should be public and private here
 pub struct Pixel {
     pub red: u8,
     pub green: u8,
     pub blue: u8,
 }
 
+#[derive(Clone)]
 pub struct BitmapFileHeader {
     pub signature: u16,
     pub other_bytes: u64,
     pub offset: u32,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct BitmapDibHeader {
     pub raw_data: Vec<u8>,
     pub header_size: u32,
@@ -62,10 +63,9 @@ pub fn read_bmp_file(path: &str) -> Result<BmpFile> {
     let mut file = File::open(&path).unwrap();
 
     let bitmap_file_header =
-        bmp_parser::parse_bitmap_file_header(file_reader::read_header_data(&mut file)?);
-    let bitmap_dib_header =
-        bmp_parser::parse_dib_header(file_reader::read_dib_header_data(&mut file)?);
-    let bitmap = bmp_parser::parse_bitmap(
+        parser::parse_bitmap_file_header(file_reader::read_header_data(&mut file)?);
+    let bitmap_dib_header = parser::parse_dib_header(file_reader::read_dib_header_data(&mut file)?);
+    let bitmap = parser::parse_bitmap(
         file_reader::read_bitmap_data(&mut file, bitmap_file_header.offset.clone())?,
         &bitmap_dib_header,
     );
@@ -84,4 +84,27 @@ pub fn write_bmp_file(path: &str, bmp_file: &BmpFile) -> Result<()> {
         .create(true)
         .open(path)?;
     file_writer::write_to_file(&mut file, bmp_file)
+}
+
+pub enum Color {
+    Grey,
+    Red,
+    Green,
+    Blue,
+    Yellow,
+    Violet,
+    Cyan,
+}
+
+pub fn transform_to_greyscale(bmp_file: &BmpFile, color: Color) -> BmpFile {
+    let mask = match color {
+        Color::Grey => [true, true, true],
+        Color::Red => [true, false, false],
+        Color::Green => [false, true, false],
+        Color::Blue => [false, false, true],
+        Color::Yellow => [true, true, false],
+        Color::Violet => [true, false, true],
+        Color::Cyan => [false, true, true],
+    };
+    transformer::transform(&bmp_file, mask)
 }
