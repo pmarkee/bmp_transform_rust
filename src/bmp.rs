@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::Result;
+use std::io;
+use std::str::FromStr;
 
 mod file_reader;
 mod file_writer;
@@ -59,7 +60,7 @@ impl std::fmt::Debug for BmpFile {
     }
 }
 
-pub fn read_bmp_file(path: &str) -> Result<BmpFile> {
+pub fn read_bmp_file(path: &str) -> io::Result<BmpFile> {
     let mut file = File::open(&path).unwrap();
 
     let bitmap_file_header =
@@ -77,7 +78,7 @@ pub fn read_bmp_file(path: &str) -> Result<BmpFile> {
     })
 }
 
-pub fn write_bmp_file(path: &str, bmp_file: &BmpFile) -> Result<()> {
+pub fn write_bmp_file(path: &str, bmp_file: &BmpFile) -> io::Result<()> {
     let mut file = OpenOptions::new()
         .read(false)
         .write(true)
@@ -96,7 +97,24 @@ pub enum Color {
     Cyan,
 }
 
-pub fn transform_to_greyscale(bmp_file: &BmpFile, color: Color) -> BmpFile {
+impl FromStr for Color {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<Color, Self::Err> {
+        match input {
+            "grey" => Ok(Color::Grey),
+            "red" => Ok(Color::Red),
+            "green" => Ok(Color::Green),
+            "blue" => Ok(Color::Blue),
+            "yellow" => Ok(Color::Yellow),
+            "violet" => Ok(Color::Violet),
+            "cyan" => Ok(Color::Cyan),
+            _ => Err(()),
+        }
+    }
+}
+
+pub fn transform(bmp_file: &BmpFile, color: Color) -> BmpFile {
     let mask = match color {
         Color::Grey => [true, true, true],
         Color::Red => [true, false, false],
